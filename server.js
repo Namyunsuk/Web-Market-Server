@@ -2,6 +2,17 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const models = require("./models");
+const multer = require("multer");
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, "uploads/");
+    },
+    filename: function (req, file, cb) {
+      cb(null, file.originalname);
+    },
+  }),
+});
 const port = 8080;
 
 app.use(express.json()); //express서버에서 json형식의 정보를 처리하도록 함
@@ -11,7 +22,7 @@ app.get("/products", (req, res) => {
   //product테이블의 모든 데이터를 가져옴
   models.Product.findAll({
     order: [["createdAt", "DESC"]],
-    attributes: ["id", "name", "price", "createdAt", "seller"], //해당 칼럼 들만 가져온다(불필요한 값들은 X)
+    attributes: ["id", "name", "price", "createdAt", "seller", "imageUrl"], //해당 칼럼 들만 가져온다(불필요한 값들은 X)
   })
     .then((result) => {
       console.log("Products: ", result);
@@ -68,6 +79,15 @@ app.post("/products", (req, res) => {
       console.error(err);
       res.send("상품 업로드에 문제가 발생하였습니다.");
     });
+});
+
+//upload.single -> 파일 하나를 처리할 때, 'image'-> 키 값임.
+app.post("/image", upload.single("image"), (req, res) => {
+  const file = req.file;
+  console.log(file);
+  res.send({
+    imageUrl: file.path,
+  });
 });
 
 app.listen(port, () => {
