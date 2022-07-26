@@ -17,12 +17,36 @@ const port = 8080;
 
 app.use(express.json()); //express서버에서 json형식의 정보를 처리하도록 함
 app.use(cors()); //모든 브라우저에서 내  서버에 요청할 수 있음
+app.use("/uploads", express.static("uploads")); //정적 파일 제공을 위한 미들웨어 함수이다.
+
+app.get("/banners", (req, res) => {
+  models.Banner.findAll({
+    limit: 2,
+  })
+    .then((result) => {
+      res.send({
+        banners: result,
+      });
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).send("Error");
+    });
+});
 
 app.get("/products", (req, res) => {
   //product테이블의 모든 데이터를 가져옴
   models.Product.findAll({
     order: [["createdAt", "DESC"]],
-    attributes: ["id", "name", "price", "createdAt", "seller", "imageUrl"], //해당 칼럼 들만 가져온다(불필요한 값들은 X)
+    attributes: [
+      "id",
+      "name",
+      "price",
+      "createdAt",
+      "seller",
+      "imageUrl",
+      "soldout",
+    ], //해당 칼럼 들만 가져온다(불필요한 값들은 X)
   })
     .then((result) => {
       console.log("Products: ", result);
@@ -32,7 +56,7 @@ app.get("/products", (req, res) => {
     })
     .catch((err) => {
       console.error(err);
-      res.send("Error");
+      res.status(400).send("Error");
     });
 });
 
@@ -52,15 +76,15 @@ app.get("/products/:id", (req, res) => {
     })
     .catch((err) => {
       console.error(err);
-      res.send("Error");
+      res.status(400).send("Error");
     });
 });
 
 app.post("/products", (req, res) => {
   const body = req.body;
-  const { name, description, price, seller } = body;
-  if (!name || !description || !price || !seller) {
-    res.send("Please write the all field");
+  const { name, description, price, seller, imageUrl } = body;
+  if (!name || !description || !price || !seller || !imageUrl) {
+    res.status(400).send("Please write all field");
   }
   //Product 테이블에 값을 create해줌
   models.Product.create({
@@ -68,6 +92,7 @@ app.post("/products", (req, res) => {
     description,
     price,
     seller,
+    imageUrl,
   })
     .then((result) => {
       console.log("Result: ", result);
@@ -77,7 +102,7 @@ app.post("/products", (req, res) => {
     })
     .catch((err) => {
       console.error(err);
-      res.send("상품 업로드에 문제가 발생하였습니다.");
+      res.status(400).send("상품 업로드에 문제가 발생하였습니다.");
     });
 });
 
@@ -88,6 +113,29 @@ app.post("/image", upload.single("image"), (req, res) => {
   res.send({
     imageUrl: file.path,
   });
+});
+
+app.post("/purchase/:id", (req, res) => {
+  const { id } = req.params;
+  models.Product.update(
+    {
+      soldout: 1,
+    },
+    {
+      where: {
+        id,
+      },
+    }
+  )
+    .then((result) => {
+      res.send({
+        result: true,
+      });
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).send(err);
+    });
 });
 
 app.listen(port, () => {
